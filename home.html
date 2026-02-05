@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verdant | Grow Your Wealth Daily</title>
+    <!-- SEO -->
+    <meta name="description" content="Verdant is a premium investment platform. Invest in curated growth plans and earn daily returns directly to your wallet.">
+    <meta name="keywords" content="investment, nigeria, daily returns, wealth, verdant, financial growth">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary: #004D40;
+            --accent: #2ECC71;
+            --bg: #F8FAF8;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: #1A2F2A; }
+        .outfit { font-family: 'Outfit', sans-serif; }
+        .mono { font-family: 'JetBrains+Mono', monospace; }
+        .leaf-gradient { background: linear-gradient(135deg, #004D40 0%, #2ECC71 100%); }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .bottom-nav { border-top: 1px solid rgba(0,0,0,0.05); }
+        .vine-progress { height: 6px; border-radius: 3px; background: #e2e8f0; overflow: hidden; }
+        .vine-fill { height: 100%; background: var(--accent); transition: width 0.5s ease; }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-white hidden">
+        <div class="animate-bounce text-emerald-600">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        </div>
+    </div>
+
+    <div id="app">
+        <!-- Views will be injected here -->
+    </div>
+
+    <!-- Navigation Bar (Hidden on Auth) -->
+    <nav id="navbar" class="fixed bottom-0 left-0 right-0 glass bottom-nav flex justify-around p-4 z-40 hidden">
+        <button onclick="router.go('home')" class="flex flex-col items-center text-teal-900 opacity-60" data-active="home">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            <span class="text-xs mt-1">Home</span>
+        </button>
+        <button onclick="router.go('invest')" class="flex flex-col items-center text-teal-900 opacity-60" data-active="invest">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            <span class="text-xs mt-1">Invest</span>
+        </button>
+        <button onclick="router.go('history')" class="flex flex-col items-center text-teal-900 opacity-60" data-active="history">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+            <span class="text-xs mt-1">History</span>
+        </button>
+        <button onclick="router.go('profile')" class="flex flex-col items-center text-teal-900 opacity-60" data-active="profile">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            <span class="text-xs mt-1">Profile</span>
+        </button>
+    </nav>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzRGVotnJNIepGKYz4-LUpexM_mss62XlEPkUsgG6jrqtF7Jde2qpUkkmcK9GqpjYxefg/exec'; // Replace after deployment
+        const state = {
+            user: JSON.parse(localStorage.getItem('verdant_user')) || null,
+            plans: [],
+            activeSubs: [],
+            txs: []
+        };
+
+        const ui = {
+            showLoading: (s) => document.getElementById('loading').classList.toggle('hidden', !s),
+            formatNaira: (num) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(num)
+        };
+
+        const api = {
+            async call(action, body = {}) {
+                ui.showLoading(true);
+                try {
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action, ...body, uid: state.user?.uid })
+                    });
+                    const json = await res.json();
+                    if (!json.success) throw new Error(json.error);
+                    return json;
+                } catch (e) {
+                    alert(e.message);
+                    return null;
+                } finally {
+                    ui.showLoading(false);
+                }
+            }
+        };
+
+        const router = {
+            async go(view) {
+                const app = document.getElementById('app');
+                const navbar = document.getElementById('navbar');
+                
+                if (!state.user && view !== 'landing') {
+                    return this.go('landing');
+                }
+
+                navbar.classList.toggle('hidden', view === 'landing');
+
+                switch(view) {
+                    case 'landing':
+                        app.innerHTML = `
+                            <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+                                <div class="mb-8">
+                                    <div class="w-20 h-20 bg-emerald-600 rounded-3xl mx-auto flex items-center justify-center text-white mb-4 shadow-xl">
+                                        <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>
+                                    </div>
+                                    <h1 class="outfit text-4xl font-extrabold text-teal-900 mb-2">Verdant</h1>
+                                    <p class="text-slate-500 max-w-xs mx-auto">Grow your wealth naturally with daily harvested returns.</p>
+                                </div>
+                                <div class="w-full max-w-sm space-y-4 bg-white p-8 rounded-3xl shadow-sm">
+                                    <input id="email" type="email" placeholder="Email Address" class="w-full p-4 rounded-xl border-none bg-slate-100 focus:ring-2 focus:ring-emerald-500">
+                                    <input id="refCode" type="text" placeholder="Referral Code (Optional)" class="w-full p-4 rounded-xl border-none bg-slate-100 focus:ring-2 focus:ring-emerald-500">
+                                    <button onclick="handleLogin()" class="w-full leaf-gradient text-white p-4 rounded-xl font-bold outfit shadow-lg transform active:scale-95 transition">Get Started</button>
+                                </div>
+                                <p class="mt-8 text-xs text-slate-400">By continuing, you agree to our Terms of Service.</p>
+                            </div>
+                        `;
+                        break;
+
+                    case 'home':
+                        const data = await api.call('get_init_data');
+                        if (data) {
+                            state.user = data.user;
+                            state.activeSubs = data.activeSubs;
+                            state.plans = data.plans;
+                            state.txs = data.txs;
+                        }
+                        
+                        app.innerHTML = `
+                            <div class="p-6">
+                                <div class="leaf-gradient rounded-3xl p-6 text-white shadow-xl mb-8 relative overflow-hidden">
+                                    <div class="relative z-10">
+                                        <p class="opacity-80 text-sm mb-1 outfit">Available Balance</p>
+                                        <h2 class="text-4xl font-extrabold outfit mb-6">${ui.formatNaira(state.user.balance)}</h2>
+                                        <div class="flex gap-4">
+                                            <button onclick="router.go('finance')" class="flex-1 bg-white/20 backdrop-blur py-3 rounded-xl font-semibold border border-white/30">Deposit</button>
+                                            <button onclick="router.go('finance')" class="flex-1 bg-white text-teal-900 py-3 rounded-xl font-semibold shadow-lg">Withdraw</button>
+                                        </div>
+                                    </div>
+                                    <svg class="absolute top-0 right-0 w-32 opacity-10 -mr-8 -mt-8" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>
+                                </div>
+
+                                <h3 class="outfit text-xl font-bold mb-4">My Growing Plants</h3>
+                                <div class="space-y-4">
+                                    ${state.activeSubs.length ? state.activeSubs.map(sub => {
+                                        const progress = (sub[6] / sub[7]) * 100;
+                                        return `
+                                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                                <div class="flex justify-between items-center mb-2">
+                                                    <span class="font-bold text-teal-900">${sub[2]}</span>
+                                                    <span class="text-emerald-600 font-bold outfit">+${ui.formatNaira(sub[3])} Daily</span>
+                                                </div>
+                                                <div class="vine-progress mb-2">
+                                                    <div class="vine-fill" style="width: ${progress}%"></div>
+                                                </div>
+                                                <div class="flex justify-between text-xs text-slate-400 font-medium">
+                                                    <span>Day ${sub[6]} of ${sub[7]}</span>
+                                                    <span>${Math.round(progress)}% Growth</span>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('') : `
+                                        <div class="bg-white p-10 rounded-3xl text-center border-2 border-dashed border-slate-200">
+                                            <p class="text-slate-400">No active plans. Start growing today!</p>
+                                            <button onclick="router.go('invest')" class="mt-4 text-emerald-600 font-bold">Browse Plans &rarr;</button>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    
+                    case 'invest':
+                        app.innerHTML = `
+                            <div class="p-6">
+                                <h1 class="outfit text-3xl font-extrabold mb-2">Marketplace</h1>
+                                <p class="text-slate-500 mb-8">Choose a plan to start your daily harvest.</p>
+                                <div class="grid gap-6">
+                                    ${state.plans.map(plan => `
+                                        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col">
+                                            <div class="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <h3 class="font-bold text-xl text-teal-900">${plan[1]}</h3>
+                                                    <p class="text-xs text-slate-400">${plan[4]} Days Duration</p>
+                                                </div>
+                                                <div class="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-sm font-bold">
+                                                    ${ui.formatNaira(plan[3])}/day
+                                                </div>
+                                            </div>
+                                            <div class="mb-6">
+                                                <p class="text-sm text-slate-600">Invest ${ui.formatNaira(plan[2])} to receive ${ui.formatNaira(plan[3] * plan[4])} total.</p>
+                                            </div>
+                                            <button onclick="confirmPurchase('${plan[0]}', '${plan[1]}', ${plan[2]})" 
+                                                    class="w-full bg-teal-900 text-white py-4 rounded-2xl font-bold outfit shadow-lg">
+                                                Plant for ${ui.formatNaira(plan[2])}
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                        break;
+
+                    case 'history':
+                        app.innerHTML = `
+                            <div class="p-6">
+                                <h1 class="outfit text-3xl font-extrabold mb-8">History</h1>
+                                <div class="space-y-4">
+                                    ${state.txs.map(tx => `
+                                        <div class="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
+                                            <div class="flex items-center gap-4">
+                                                <div class="w-10 h-10 rounded-full ${tx[3] === 'EARNING' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-600'} flex items-center justify-center">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${tx[3] === 'EARNING' ? 'M5 10l7-7m0 0l7 7m-7-7v18' : 'M19 14l-7 7m0 0l-7-7m7 7V3'}"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <p class="font-bold text-sm text-teal-900">${tx[3]}</p>
+                                                    <p class="text-xs text-slate-400">${new Date(tx[5]).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <p class="font-bold outfit ${tx[2] > 0 ? 'text-emerald-600' : 'text-slate-900'}">
+                                                ${tx[2] > 0 ? '+' : ''}${ui.formatNaira(tx[2])}
+                                            </p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    
+                    case 'profile':
+                        app.innerHTML = `
+                            <div class="p-6 text-center">
+                                <div class="w-24 h-24 bg-teal-900 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold outfit">
+                                    ${state.user.email[0].toUpperCase()}
+                                </div>
+                                <h2 class="text-xl font-bold text-teal-900">${state.user.email}</h2>
+                                <p class="text-sm text-slate-400 mb-8">Investor Status: Active</p>
+
+                                <div class="bg-white p-6 rounded-3xl shadow-sm text-left mb-6 border border-slate-100">
+                                    <h3 class="outfit font-bold mb-2">Referral Program</h3>
+                                    <p class="text-xs text-slate-500 mb-4">Share your code to earn bonuses from your friends' harvests.</p>
+                                    <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center border border-slate-200">
+                                        <span class="mono font-bold text-teal-900">${state.user.refCode}</span>
+                                        <button onclick="copyRef()" class="text-emerald-600 font-bold text-sm">Copy</button>
+                                    </div>
+                                </div>
+
+                                <button onclick="logout()" class="text-red-500 font-bold">Sign Out</button>
+                            </div>
+                        `;
+                        break;
+                    
+                    case 'finance':
+                        app.innerHTML = `
+                            <div class="p-6">
+                                <h1 class="outfit text-3xl font-extrabold mb-8">Finance</h1>
+                                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-8">
+                                    <h3 class="font-bold text-teal-900 mb-4">Add Funds</h3>
+                                    <input id="depAmt" type="number" placeholder="Amount (₦)" class="w-full p-4 rounded-xl bg-slate-50 mb-4 border-none focus:ring-2 focus:ring-emerald-500">
+                                    <button onclick="handleDeposit()" class="w-full leaf-gradient text-white py-4 rounded-xl font-bold shadow-lg">Request Deposit</button>
+                                </div>
+
+                                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                    <h3 class="font-bold text-teal-900 mb-4">Withdraw Funds</h3>
+                                    <input id="witAmt" type="number" placeholder="Amount (₦)" class="w-full p-4 rounded-xl bg-slate-50 mb-4 border-none focus:ring-2 focus:ring-emerald-500">
+                                    <input id="bankName" type="text" placeholder="Bank Name" class="w-full p-4 rounded-xl bg-slate-50 mb-2 border-none">
+                                    <input id="acctNum" type="text" placeholder="Account Number" class="w-full p-4 rounded-xl bg-slate-50 mb-2 border-none">
+                                    <input id="acctName" type="text" placeholder="Account Holder Name" class="w-full p-4 rounded-xl bg-slate-50 mb-4 border-none">
+                                    <button onclick="handleWithdraw()" class="w-full bg-slate-100 text-teal-900 py-4 rounded-xl font-bold border border-slate-200">Submit Request</button>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                }
+            }
+        };
+
+        // UI Handlers
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const refCode = document.getElementById('refCode').value;
+            if (!email) return alert("Email required");
+            const res = await api.call('auth', { email, referralCode: refCode });
+            if (res) {
+                state.user = res.user;
+                localStorage.setItem('verdant_user', JSON.stringify(res.user));
+                router.go('home');
+            }
+        }
+
+        async function confirmPurchase(id, title, cost) {
+            if (confirm(`Confirm purchase of ${title} for ${ui.formatNaira(cost)}?`)) {
+                const res = await api.call('purchase_plan', { planId: id });
+                if (res) {
+                    alert("Planting successful! Harvesting begins tomorrow.");
+                    router.go('home');
+                }
+            }
+        }
+
+        async function handleDeposit() {
+            const amount = document.getElementById('depAmt').value;
+            if (!amount || amount < 500) return alert("Min deposit is 500");
+            const res = await api.call('request_deposit', { amount });
+            if (res) {
+                app.innerHTML = `
+                    <div class="p-6 text-center">
+                        <div class="bg-emerald-100 text-emerald-600 w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-6">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <h2 class="outfit text-2xl font-bold mb-4">Request Sent</h2>
+                        <p class="text-slate-500 mb-8">Please transfer ₦${amount} to the bank account below. Admin will approve once seen.</p>
+                        <div class="bg-white p-6 rounded-3xl border-2 border-dashed border-emerald-200 text-left mb-8">
+                            <p class="text-xs text-slate-400 uppercase font-bold mb-2">Bank Details</p>
+                            <p class="font-bold text-teal-900">BANK: Kuda Microfinance</p>
+                            <p class="font-bold text-teal-900">ACCOUNT: 1234567890</p>
+                            <p class="font-bold text-teal-900">NAME: Verdant Investments</p>
+                        </div>
+                        <button onclick="router.go('home')" class="w-full leaf-gradient text-white py-4 rounded-2xl font-bold">I've Made The Transfer</button>
+                    </div>
+                `;
+            }
+        }
+
+        async function handleWithdraw() {
+            const amount = document.getElementById('witAmt').value;
+            const bank = {
+                name: document.getElementById('bankName').value,
+                number: document.getElementById('acctNum').value,
+                holder: document.getElementById('acctName').value
+            };
+            if (!amount || !bank.name || !bank.number) return alert("Please fill all details");
+            const res = await api.call('request_withdrawal', { amount, bankDetails: bank });
+            if (res) {
+                alert("Withdrawal request sent. You will be paid within 24 hours.");
+                router.go('home');
+            }
+        }
+
+        function copyRef() {
+            navigator.clipboard.writeText(state.user.refCode);
+            alert("Referral code copied!");
+        }
+
+        function logout() {
+            localStorage.removeItem('verdant_user');
+            state.user = null;
+            router.go('landing');
+        }
+
+        // Init
+        window.onload = () => router.go('home');
+    </script>
+</body>
+</html>
