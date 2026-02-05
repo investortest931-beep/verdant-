@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verdant | Grow Your Wealth Daily</title>
-    <!-- SEO -->
-    <meta name="description" content="Verdant is a premium investment platform. Invest in curated growth plans and earn daily returns directly to your wallet.">
-    <meta name="keywords" content="investment, nigeria, daily returns, wealth, verdant, financial growth">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,6 +21,11 @@
         .bottom-nav { border-top: 1px solid rgba(0,0,0,0.05); }
         .vine-progress { height: 6px; border-radius: 3px; background: #e2e8f0; overflow: hidden; }
         .vine-fill { height: 100%; background: var(--accent); transition: width 0.5s ease; }
+        
+        /* Custom Alert Styles */
+        #custom-alert-overlay {
+            transition: opacity 0.3s ease;
+        }
     </style>
 </head>
 <body class="pb-24">
@@ -32,6 +34,21 @@
     <div id="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-white hidden">
         <div class="animate-bounce text-emerald-600">
             <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        </div>
+    </div>
+
+    <!-- Custom Alert/Confirm UI -->
+    <div id="custom-alert-overlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-6 hidden">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl transform transition-all scale-95 opacity-0" id="alert-box">
+            <div id="alert-icon" class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h3 id="alert-title" class="outfit text-xl font-bold text-teal-900 mb-2">Message</h3>
+            <p id="alert-msg" class="text-slate-600 mb-6 text-sm"></p>
+            <div class="flex gap-3" id="alert-actions">
+                <button id="alert-cancel" class="flex-1 py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hidden">Cancel</button>
+                <button id="alert-ok" class="flex-1 py-3 rounded-xl font-bold leaf-gradient text-white shadow-lg">Okay</button>
+            </div>
         </div>
     </div>
 
@@ -60,7 +77,7 @@
     </nav>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzRGVotnJNIepGKYz4-LUpexM_mss62XlEPkUsgG6jrqtF7Jde2qpUkkmcK9GqpjYxefg/exec'; // Replace after deployment
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzRGVotnJNIepGKYz4-LUpexM_mss62XlEPkUsgG6jrqtF7Jde2qpUkkmcK9GqpjYxefg/exec';
         const state = {
             user: JSON.parse(localStorage.getItem('verdant_user')) || null,
             plans: [],
@@ -70,7 +87,56 @@
 
         const ui = {
             showLoading: (s) => document.getElementById('loading').classList.toggle('hidden', !s),
-            formatNaira: (num) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(num)
+            formatNaira: (num) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(num),
+            
+            // Custom Dialogs
+            showAlert: (msg, title = "Verdant") => {
+                return new Promise(resolve => {
+                    const overlay = document.getElementById('custom-alert-overlay');
+                    const box = document.getElementById('alert-box');
+                    const okBtn = document.getElementById('alert-ok');
+                    const cancelBtn = document.getElementById('alert-cancel');
+                    
+                    document.getElementById('alert-title').innerText = title;
+                    document.getElementById('alert-msg').innerText = msg;
+                    cancelBtn.classList.add('hidden');
+                    
+                    overlay.classList.remove('hidden');
+                    setTimeout(() => {
+                        box.classList.remove('scale-95', 'opacity-0');
+                    }, 10);
+
+                    const close = () => {
+                        box.classList.add('scale-95', 'opacity-0');
+                        setTimeout(() => { overlay.classList.add('hidden'); resolve(true); }, 200);
+                    };
+                    okBtn.onclick = close;
+                });
+            },
+            showConfirm: (msg, title = "Are you sure?") => {
+                return new Promise(resolve => {
+                    const overlay = document.getElementById('custom-alert-overlay');
+                    const box = document.getElementById('alert-box');
+                    const okBtn = document.getElementById('alert-ok');
+                    const cancelBtn = document.getElementById('alert-cancel');
+                    
+                    document.getElementById('alert-title').innerText = title;
+                    document.getElementById('alert-msg').innerText = msg;
+                    cancelBtn.classList.remove('hidden');
+                    
+                    overlay.classList.remove('hidden');
+                    setTimeout(() => {
+                        box.classList.remove('scale-95', 'opacity-0');
+                    }, 10);
+
+                    const close = (res) => {
+                        box.classList.add('scale-95', 'opacity-0');
+                        setTimeout(() => { overlay.classList.add('hidden'); resolve(res); }, 200);
+                    };
+                    okBtn.onclick = () => close(true);
+                    cancelBtn.onclick = () => close(false);
+                });
+            }
         };
 
         const api = {
@@ -85,7 +151,7 @@
                     if (!json.success) throw new Error(json.error);
                     return json;
                 } catch (e) {
-                    alert(e.message);
+                    ui.showAlert(e.message, "Error");
                     return null;
                 } finally {
                     ui.showLoading(false);
@@ -147,7 +213,6 @@
                                     </div>
                                     <svg class="absolute top-0 right-0 w-32 opacity-10 -mr-8 -mt-8" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>
                                 </div>
-
                                 <h3 class="outfit text-xl font-bold mb-4">My Growing Plants</h3>
                                 <div class="space-y-4">
                                     ${state.activeSubs.length ? state.activeSubs.map(sub => {
@@ -241,19 +306,69 @@
                                 <div class="w-24 h-24 bg-teal-900 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold outfit">
                                     ${state.user.email[0].toUpperCase()}
                                 </div>
-                                <h2 class="text-xl font-bold text-teal-900">${state.user.email}</h2>
+                          <h2 class="text-xl font-bold text-teal-900">${state.user.email}</h2>
                                 <p class="text-sm text-slate-400 mb-8">Investor Status: Active</p>
 
                                 <div class="bg-white p-6 rounded-3xl shadow-sm text-left mb-6 border border-slate-100">
-                                    <h3 class="outfit font-bold mb-2">Referral Program</h3>
-                                    <p class="text-xs text-slate-500 mb-4">Share your code to earn bonuses from your friends' harvests.</p>
+                                    <h3 class="outfit font-bold mb-2 text-teal-900">Referral Program</h3>
+                                    <p class="text-xs text-slate-500 mb-6">Earn commissions from every plan your referrals plant.</p>
+                                    
+                                    <button onclick="router.go('referral')" class="w-full flex items-center justify-between bg-emerald-50 p-4 rounded-2xl border border-emerald-100 mb-4 group active:scale-[0.98] transition-transform">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                            </div>
+                                            <div class="text-left">
+                                                <p class="font-bold text-emerald-900 text-sm">View Referrals</p>
+                                                <p class="text-[10px] text-emerald-600 uppercase font-bold tracking-wider">Earnings & Links</p>
+                                            </div>
+                                        </div>
+                                        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </button>
+                                </div>
+
+                                <button onclick="logout()" class="text-red-500 font-bold active:opacity-60">Sign Out</button>
+                            </div>
+                        `;
+                        break;
+
+                    case 'referral':
+                        app.innerHTML = `
+                            <div class="p-6">
+                                <div class="flex items-center gap-4 mb-8">
+                                    <button onclick="router.go('profile')" class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                                    </button>
+                                    <h1 class="outfit text-2xl font-bold text-teal-900">Referrals</h1>
+                                </div>
+
+                                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6">
+                                    <p class="text-xs text-slate-400 font-bold uppercase mb-2 tracking-widest">Your Referral Code</p>
                                     <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center border border-slate-200">
-                                        <span class="mono font-bold text-teal-900">${state.user.refCode}</span>
-                                        <button onclick="copyRef()" class="text-emerald-600 font-bold text-sm">Copy</button>
+                                        <span class="mono font-bold text-teal-900 text-lg">${state.user.refCode}</span>
+                                        <button onclick="copyRef()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-md">Copy</button>
                                     </div>
                                 </div>
 
-                                <button onclick="logout()" class="text-red-500 font-bold">Sign Out</button>
+                                <div class="grid grid-cols-2 gap-4 mb-8">
+                                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase">Total Referrals</p>
+                                        <p class="text-2xl font-bold text-teal-900 outfit">0</p>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase">Total Bonus</p>
+                                        <p class="text-2xl font-bold text-emerald-600 outfit">₦0.00</p>
+                                    </div>
+                                </div>
+
+                                <div class="bg-emerald-900 rounded-3xl p-6 text-white text-sm">
+                                    <h4 class="font-bold mb-3 outfit text-base">How it works</h4>
+                                    <ul class="space-y-3 opacity-90">
+                                        <li class="flex gap-2"><span>•</span> Invite friends using your code.</li>
+                                        <li class="flex gap-2"><span>•</span> Earn 5% instant commission on their first plant.</li>
+                                        <li class="flex gap-2"><span>•</span> Earnings are added to your available balance.</li>
+                                    </ul>
+                                </div>
                             </div>
                         `;
                         break;
@@ -287,7 +402,7 @@
         async function handleLogin() {
             const email = document.getElementById('email').value;
             const refCode = document.getElementById('refCode').value;
-            if (!email) return alert("Email required");
+            if (!email) return ui.showAlert("Email address is required", "Missing Info");
             const res = await api.call('auth', { email, referralCode: refCode });
             if (res) {
                 state.user = res.user;
@@ -297,10 +412,11 @@
         }
 
         async function confirmPurchase(id, title, cost) {
-            if (confirm(`Confirm purchase of ${title} for ${ui.formatNaira(cost)}?`)) {
+            const confirmed = await ui.showConfirm(`Confirm purchase of ${title} for ${ui.formatNaira(cost)}?`, "Investment Plan");
+            if (confirmed) {
                 const res = await api.call('purchase_plan', { planId: id });
                 if (res) {
-                    alert("Planting successful! Harvesting begins tomorrow.");
+                    await ui.showAlert("Planting successful! Harvesting begins tomorrow.", "Success");
                     router.go('home');
                 }
             }
@@ -308,7 +424,7 @@
 
         async function handleDeposit() {
             const amount = document.getElementById('depAmt').value;
-            if (!amount || amount < 500) return alert("Min deposit is 500");
+            if (!amount || amount < 500) return ui.showAlert("Minimum deposit is ₦500", "Amount Too Low");
             const res = await api.call('request_deposit', { amount });
             if (res) {
                 app.innerHTML = `
@@ -320,9 +436,9 @@
                         <p class="text-slate-500 mb-8">Please transfer ₦${amount} to the bank account below. Admin will approve once seen.</p>
                         <div class="bg-white p-6 rounded-3xl border-2 border-dashed border-emerald-200 text-left mb-8">
                             <p class="text-xs text-slate-400 uppercase font-bold mb-2">Bank Details</p>
-                            <p class="font-bold text-teal-900">BANK: Opay</p>
-                            <p class="font-bold text-teal-900">ACCOUNT: 651 263 1038</p>
-                            <p class="font-bold text-teal-900">NAME: EMMANUEL ONYEDIKACHUKWU JAMES</p>
+                            <p class="font-bold text-teal-900">BANK: Kuda Microfinance</p>
+                            <p class="font-bold text-teal-900">ACCOUNT: 1234567890</p>
+                            <p class="font-bold text-teal-900">NAME: Verdant Investments</p>
                         </div>
                         <button onclick="router.go('home')" class="w-full leaf-gradient text-white py-4 rounded-2xl font-bold">I've Made The Transfer</button>
                     </div>
@@ -337,17 +453,27 @@
                 number: document.getElementById('acctNum').value,
                 holder: document.getElementById('acctName').value
             };
-            if (!amount || !bank.name || !bank.number) return alert("Please fill all details");
+            if (!amount || !bank.name || !bank.number) return ui.showAlert("Please fill all withdrawal details", "Incomplete Form");
             const res = await api.call('request_withdrawal', { amount, bankDetails: bank });
             if (res) {
-                alert("Withdrawal request sent. You will be paid within 24 hours.");
+                await ui.showAlert("Withdrawal request sent. You will be paid within 24 hours.", "Success");
                 router.go('home');
             }
         }
 
-        function copyRef() {
-            navigator.clipboard.writeText(state.user.refCode);
-            alert("Referral code copied!");
+        async function copyRef() {
+            try {
+                // Using deprecated execCommand for iFrame compatibility as per instructions
+                const el = document.createElement('textarea');
+                el.value = state.user.refCode;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                ui.showAlert("Referral code copied to clipboard!", "Copied");
+            } catch (err) {
+                ui.showAlert("Could not copy code automatically.", "Error");
+            }
         }
 
         function logout() {
